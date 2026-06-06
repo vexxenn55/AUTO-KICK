@@ -1,0 +1,397 @@
+-- ==================== ESP TIMER + CUSTOM AUTO KICK ====================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local playerName = LocalPlayer.Name
+local displayName = LocalPlayer.DisplayName
+
+local ESPs = {
+    BaseTimer = {Enabled = false, Data = {}}
+}
+
+local lastScan = 0
+local myPlot = nil
+local hasKicked = false
+
+-- Kick settings (customizable)
+local kickEnabled = false
+local kickAtTime = 2   -- default value
+
+local function clearBaseTimerESP()
+    for plot, bb in pairs(ESPs.BaseTimer.Data) do
+        if bb then pcall(function() bb:Destroy() end) end
+    end
+    ESPs.BaseTimer.Data = {}
+    myPlot = nil
+    hasKicked = false
+end
+
+-- Find your plot
+local function getMyPlot()
+    local plotsFolder = Workspace:FindFirstChild("Plots")
+    if not plotsFolder then return nil end
+
+    local lowerName = playerName:lower()
+    local lowerDisplay = displayName:lower()
+
+    for _, plot in pairs(plotsFolder:GetChildren()) do
+        local plotNameLower = plot.Name:lower()
+        if plot.Name == playerName or plot.Name == displayName or
+           plotNameLower:find(lowerName) or plotNameLower:find(lowerDisplay) then
+            return plot
+        end
+
+        local ownerValue = plot:FindFirstChild("Owner") 
+                        or plot:FindFirstChild("Player") 
+                        or plot:FindFirstChild("OwnerName")
+
+        if ownerValue then
+            if ownerValue:IsA("StringValue") then
+                local val = ownerValue.Value:lower()
+                if val == lowerName or val == lowerDisplay then
+                    return plot
+                end
+            elseif ownerValue:IsA("ObjectValue") and ownerValue.Value then
+                if ownerValue.Value.Name == playerName or ownerValue.Value.Name == displayName then
+                    return plot
+                end
+            end
+        end
+
+        for _, descendant in pairs(plot:GetDescendants()) do
+            if descendant:IsA("TextLabel") or descendant:IsA("TextButton") then
+                local txt = descendant.Text:lower()
+                if txt:find(lowerName) or txt:find(lowerDisplay) then
+                    return plot
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- Check if timer has reached the custom kick time
+local function shouldKick(timerText)
+    if not timerText or timerText == "" then return false end
+    local clean = timerText:gsub("[^%d:]", "")
+    if clean == tostring(kickAtTime) or clean == ("0" .. kickAtTime) or clean:match(":" .. string.format("%02d", kickAtTime) .. "$") then
+        return true
+    end
+    local num = tonumber(clean:match("%d+"))
+    if num and num <= kickAtTime then
+        return true
+    end
+    return false
+end
+
+-- ==================== GUI ====================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ESP_Timer_CustomKick"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 220, 0, 145)
+Frame.Position = UDim2.new(0.5, -110, 0.5, -72)
+Frame.BackgroundColor3 = Color3.new(0, 0, 0)
+Frame.BorderSizePixel = 0
+Frame.Active = true
+Frame.Draggable = true
+Frame.Parent = ScreenGui
+Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
+
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 25)
+Title.BackgroundTransparency = 1
+Title.Text = "Vartex Auto Kick"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+Title.Parent = Frame
+
+-- ESP Toggle
+local ESPToggleBtn = Instance.new("TextButton")
+ESPToggleBtn.Size = UDim2.new(0.9, 0, 0, 28)
+ESPToggleBtn.Position = UDim2.new(0.05, 0, 0, 30)
+ESPToggleBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+ESPToggleBtn.Text = "ESP Timer: OFF"
+ESPToggleBtn.TextColor3 = Color3.new(1,1,1)
+ESPToggleBtn.Font = Enum.Font.GothamBold
+ESPToggleBtn.TextSize = 13
+ESPToggleBtn.Parent = Frame
+Instance.new("UICorner", ESPToggleBtn).CornerRadius = UDim.new(0, 6)
+
+-- Kick at: label + TextBox
+local KickLabel = Instance.new("TextLabel")
+KickLabel.Size = UDim2.new(0.45, 0, 0, 25)
+KickLabel.Position = UDim2.new(0.05, 0, 0, 65)
+KickLabel.BackgroundTransparency = 1
+KickLabel.Text = "Kick at:"
+KickLabel.TextColor3 = Color3.new(1,1,1)
+KickLabel.Font = Enum.Font.GothamBold
+KickLabel.TextSize = 13
+KickLabel.TextXAlignment = Enum.TextXAlignment.Left
+KickLabel.Parent = Frame
+
+local KickTextBox = Instance.new("TextBox")
+KickTextBox.Size = UDim2.new(0.45, 0, 0, 25)
+KickTextBox.Position = UDim2.new(0.5, 0, 0, 65)
+KickTextBox.BackgroundColor3 = Color3.fromRGB(30,30,30)
+KickTextBox.Text = "2"
+KickTextBox.PlaceholderText = "2"
+KickTextBox.TextColor3 = Color3.new(1,1,1)
+KickTextBox.Font = Enum.Font.GothamBold
+KickTextBox.TextSize = 14
+KickTextBox.Parent = Frame
+Instance.new("UICorner", KickTextBox).CornerRadius = UDim.new(0, 6)
+
+-- Kick Toggle
+local KickToggleBtn = Instance.new("TextButton")
+KickToggleBtn.Size = UDim2.new(0.9, 0, 0, 28)
+KickToggleBtn.Position = UDim2.new(0.05, 0, 0, 98)
+KickToggleBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+KickToggleBtn.Text = "Auto Kick: OFF"
+KickToggleBtn.TextColor3 = Color3.new(1,1,1)
+KickToggleBtn.Font = Enum.Font.GothamBold
+KickToggleBtn.TextSize = 13
+KickToggleBtn.Parent = Frame
+Instance.new("UICorner", KickToggleBtn).CornerRadius = UDim.new(0, 6)
+
+-- Toggle Logic
+ESPToggleBtn.MouseButton1Click:Connect(function()
+    ESPs.BaseTimer.Enabled = not ESPs.BaseTimer.Enabled
+    if ESPs.BaseTimer.Enabled then
+        ESPToggleBtn.BackgroundColor3 = Color3.new(0, 0.6, 0)
+        ESPToggleBtn.Text = "ESP Timer: ON"
+    else
+        ESPToggleBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+        ESPToggleBtn.Text = "ESP Timer: OFF"
+        clearBaseTimerESP()
+    end
+end)
+
+KickToggleBtn.MouseButton1Click:Connect(function()
+    kickEnabled = not kickEnabled
+    if kickEnabled then
+        KickToggleBtn.BackgroundColor3 = Color3.new(0, 0.6, 0)
+        KickToggleBtn.Text = "Auto Kick: ON"
+    else
+        KickToggleBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+        KickToggleBtn.Text = "Auto Kick: OFF"
+    end
+end)
+
+-- Update kick time when user types in the box
+KickTextBox.FocusLost:Connect(function(enterPressed)
+    local num = tonumber(KickTextBox.Text)
+    if num then
+        kickAtTime = math.max(0, num)  -- prevent negative
+        KickTextBox.Text = tostring(kickAtTime)
+    else
+        KickTextBox.Text = tostring(kickAtTime)  -- reset if invalid
+    end
+end)
+
+-- ==================== Main Logic ====================
+local function updateBaseTimerESP()
+    if not ESPs.BaseTimer.Enabled then return end
+
+    local now = tick()
+    if now - lastScan > 0.5 then
+        myPlot = getMyPlot()
+        lastScan = now
+    end
+
+    local plot = myPlot
+    if not plot then return end
+
+    local purchases = plot:FindFirstChild("Purchases")
+    local block = purchases and purchases:FindFirstChild("PlotBlock")
+    local main = block and block:FindFirstChild("Main")
+
+    if main then
+        local timerGui = main:FindFirstChild("BillboardGui")
+        local timer = timerGui and timerGui:FindFirstChild("RemainingTime")
+
+        if timer then
+            local timerText = timer.Text
+
+            -- Auto-kick (only if enabled)
+            if kickEnabled and shouldKick(timerText) and not hasKicked then
+                hasKicked = true
+                print("[ESP] Timer reached " .. kickAtTime .. " → Kicking player...")
+                LocalPlayer:Kick("Kicked By VCF - .gg/98pwBypBE4")
+                return
+            end
+
+            -- Create/Update ESP
+            if not ESPs.BaseTimer.Data[plot] then
+                local bb = Instance.new("BillboardGui")
+                bb.Adornee = main
+                bb.Size = UDim2.new(0, 80, 0, 30)
+                bb.StudsOffset = Vector3.new(0, 5, 0)
+                bb.AlwaysOnTop = true
+                bb.Parent = plot
+
+                local lbl = Instance.new("TextLabel", bb)
+                lbl.Size = UDim2.new(1,0,1,0)
+                lbl.BackgroundTransparency = 1
+                lbl.TextColor3 = Color3.fromRGB(255,255,100)
+                lbl.TextStrokeTransparency = 0
+                lbl.Font = Enum.Font.GothamBold
+                lbl.TextSize = 16
+
+                ESPs.BaseTimer.Data[plot] = bb
+            end
+
+            if ESPs.BaseTimer.Data[plot] and ESPs.BaseTimer.Data[plot]:FindFirstChild("TextLabel") then
+                ESPs.BaseTimer.Data[plot].TextLabel.Text = timerText
+            end
+        end
+    end
+end
+
+RunService.Heartbeat:Connect(function()
+    if ESPs.BaseTimer.Enabled then
+        updateBaseTimerESP()
+    end
+end)
+-- watermark
+-- 🚀 Vartex Hub 🚀 Top Bar (Animated Shine)
+
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Remove old (fixed name)
+if PlayerGui:FindFirstChild("VartexHubGui") then
+	PlayerGui.VartexHubGui:Destroy()
+end
+
+-- GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "VartexHubGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Parent = ScreenGui
+MainFrame.Size = UDim2.new(0, 360, 0, 75)
+MainFrame.Position = UDim2.new(0.5, -180, 0, 815)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+MainFrame.BackgroundTransparency = 0.35
+MainFrame.BorderSizePixel = 0
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 20)
+UICorner.Parent = MainFrame
+
+-- Red Outline
+local Stroke = Instance.new("UIStroke")
+Stroke.Parent = MainFrame
+Stroke.Color = Color3.fromRGB(255, 0, 0)
+Stroke.Thickness = 3
+
+TweenService:Create(
+	Stroke,
+	TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+	{
+		Transparency = 0.4,
+		Thickness = 2
+	}
+):Play()
+
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Parent = MainFrame
+Title.BackgroundTransparency = 1
+Title.Size = UDim2.new(1,0,0,35)
+Title.Position = UDim2.new(0,0,0,10)
+Title.Text = "🚀 Vartex Hub 🚀"
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 24
+Title.TextColor3 = Color3.fromRGB(255,255,255)
+
+-- Shine Effect
+local Gradient = Instance.new("UIGradient")
+Gradient.Parent = Title
+Gradient.Rotation = 0
+
+Gradient.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255,255,255)),
+	ColorSequenceKeypoint.new(0.45, Color3.fromRGB(255,255,255)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(170,170,170)),
+	ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255,255,255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255))
+}
+
+Gradient.Offset = Vector2.new(-1,0)
+
+task.spawn(function()
+	while true do
+		Gradient.Offset = Vector2.new(-1,0)
+
+		local Tween = TweenService:Create(
+			Gradient,
+			TweenInfo.new(1.2, Enum.EasingStyle.Linear),
+			{
+				Offset = Vector2.new(1,0)
+			}
+		)
+
+		Tween:Play()
+		Tween.Completed:Wait()
+
+		task.wait(3)
+	end
+end)
+
+-- Subtitle
+local Sub = Instance.new("TextLabel")
+Sub.Parent = MainFrame
+Sub.BackgroundTransparency = 1
+Sub.Size = UDim2.new(1,0,0,20)
+Sub.Position = UDim2.new(0,0,0,42)
+Sub.Text = "https://discord.gg/98pwBypBE4 | @r6bt"
+Sub.Font = Enum.Font.Gotham
+Sub.TextSize = 13
+Sub.TextColor3 = Color3.fromRGB(210,210,210)
+-- middle screen watermark
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "V0ltsUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Main text
+local text = Instance.new("TextLabel")
+text.Parent = screenGui
+text.AnchorPoint = Vector2.new(0.5, 0.5)
+text.Position = UDim2.new(0.5, 0, 0.35, 0)
+text.Size = UDim2.new(0, 280, 0, 35)
+text.BackgroundTransparency = 1
+text.Text = "https://discord.gg/98pwBypBE4"
+text.TextColor3 = Color3.fromRGB(255, 255, 255)
+text.TextTransparency = 0.2
+text.TextScaled = true
+text.Font = Enum.Font.GothamBlack -- thicker font
+
+-- Stroke (outline = more "thicc")
+local stroke = Instance.new("UIStroke")
+stroke.Parent = text
+stroke.Color = Color3.fromRGB(0, 0, 0)
+stroke.Thickness = 2
+stroke.Transparency = 0.3
+print("LOADED KICK AT TIME ON BASE BY - @R6BT")
