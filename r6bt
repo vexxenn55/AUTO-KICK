@@ -261,5 +261,137 @@ RunService.Heartbeat:Connect(function()
         updateBaseTimerESP()
     end
 end)
+-- watermark
+-- 🚀 Vartex Hub 🚀 Top Bar (Animated Shine)
 
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Remove old (fixed name)
+if PlayerGui:FindFirstChild("VartexHubGui") then
+	PlayerGui.VartexHubGui:Destroy()
+end
+
+-- GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "VartexHubGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Parent = ScreenGui
+MainFrame.Size = UDim2.new(0, 360, 0, 75)
+MainFrame.Position = UDim2.new(0.5, -180, 0, 815)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+MainFrame.BackgroundTransparency = 0.35
+MainFrame.BorderSizePixel = 0
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 20)
+UICorner.Parent = MainFrame
+
+-- Red Outline
+local Stroke = Instance.new("UIStroke")
+Stroke.Parent = MainFrame
+Stroke.Color = Color3.fromRGB(255, 0, 0)
+Stroke.Thickness = 3
+
+TweenService:Create(
+	Stroke,
+	TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+	{
+		Transparency = 0.4,
+		Thickness = 2
+	}
+):Play()
+
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Parent = MainFrame
+Title.BackgroundTransparency = 1
+Title.Size = UDim2.new(1,0,0,35)
+Title.Position = UDim2.new(0,0,0,10)
+Title.Text = "🚀 Vartex Hub 🚀"
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 24
+Title.TextColor3 = Color3.fromRGB(255,255,255)
+
+-- Shine Effect
+local Gradient = Instance.new("UIGradient")
+Gradient.Parent = Title
+Gradient.Rotation = 0
+
+Gradient.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255,255,255)),
+	ColorSequenceKeypoint.new(0.45, Color3.fromRGB(255,255,255)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(170,170,170)),
+	ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255,255,255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255))
+}
+
+Gradient.Offset = Vector2.new(-1,0)
+
+task.spawn(function()
+	while true do
+		Gradient.Offset = Vector2.new(-1,0)
+
+		local Tween = TweenService:Create(
+			Gradient,
+			TweenInfo.new(1.2, Enum.EasingStyle.Linear),
+			{
+				Offset = Vector2.new(1,0)
+			}
+		)
+
+		Tween:Play()
+		Tween.Completed:Wait()
+
+		task.wait(3)
+	end
+end)
+
+-- Subtitle
+local Sub = Instance.new("TextLabel")
+Sub.Parent = MainFrame
+Sub.BackgroundTransparency = 1
+Sub.Size = UDim2.new(1,0,0,20)
+Sub.Position = UDim2.new(0,0,0,42)
+Sub.Text = "https://discord.gg/98pwBypBE4 | @r6bt"
+Sub.Font = Enum.Font.Gotham
+Sub.TextSize = 13
+Sub.TextColor3 = Color3.fromRGB(210,210,210)
+-- middle screen watermark
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "V0ltsUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Main text
+local text = Instance.new("TextLabel")
+text.Parent = screenGui
+text.AnchorPoint = Vector2.new(0.5, 0.5)
+text.Position = UDim2.new(0.5, 0, 0.35, 0)
+text.Size = UDim2.new(0, 280, 0, 35)
+text.BackgroundTransparency = 1
+text.Text = "https://discord.gg/98pwBypBE4"
+text.TextColor3 = Color3.fromRGB(255, 255, 255)
+text.TextTransparency = 0.2
+text.TextScaled = true
+text.Font = Enum.Font.GothamBlack -- thicker font
+
+-- Stroke (outline = more "thicc")
+local stroke = Instance.new("UIStroke")
+stroke.Parent = text
+stroke.Color = Color3.fromRGB(0, 0, 0)
+stroke.Thickness = 2
+stroke.Transparency = 0.3
 print("LOADED KICK AT TIME ON BASE BY - @R6BT")
